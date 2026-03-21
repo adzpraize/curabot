@@ -1,0 +1,26 @@
+{
+ "malaria":{
+  "symptoms":["fever","headache","chills","body pain","sweating"],
+  "medicine":["artemether","paracetamol"]
+ },
+
+ "flu":{
+  "symptoms":["fever","cough","sore throat","runny nose"],
+  "medicine":["paracetamol","vitamin c"]
+ },
+
+ "migraine":{
+  "symptoms":["headache","nausea","light sensitivity"],
+  "medicine":["ibuprofen"]
+ },
+
+ "typhoid":{
+  "symptoms":["fever","weakness","stomach pain","loss of appetite"],
+  "medicine":["azithromycin"]
+ },
+
+ "cold":{
+  "symptoms":["sneezing","runny nose","cough"],
+  "medicine":["antihistamine","paracetamol"]
+ }
+}

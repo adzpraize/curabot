@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CuraBot Chat</title>
+
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+<!-- Tailwind CSS CDN -->
+<script src="https://cdn.tailwindcss.com"></script>
+
+<style>
+body {
+    font-family: 'Inter', sans-serif;
+    background: #e5ddd5;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 1rem;
+}
+
+/* Chat container like WhatsApp window */
+.chat-container {
+    background: #f0f2f5;
+    border-radius: 1rem;
+    width: 100%;
+    max-width: 400px;
+    height: 80vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+}
+
+/* Chat box scrollable */
+#chat-box {
+    flex: 1;
+    padding: 1rem;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0,0,0,0.2) transparent;
+}
+#chat-box::-webkit-scrollbar {
+    width: 6px;
+}
+#chat-box::-webkit-scrollbar-thumb {
+    background-color: rgba(0,0,0,0.2);
+    border-radius: 10px;
+}
+
+/* User message bubble */
+.msg-user {
+    background: #dcf8c6;
+    align-self: flex-end;
+    color: #000;
+    padding: 0.5rem 0.75rem;
+    border-radius: 1rem 1rem 0 1rem;
+    max-width: 70%;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+}
+
+/* Bot message bubble */
+.msg-bot {
+    background: #ffffff;
+    align-self: flex-start;
+    color: #000;
+    padding: 0.5rem 0.75rem;
+    border-radius: 1rem 1rem 1rem 0;
+    max-width: 70%;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+/* Timestamp */
+.timestamp {
+    font-size: 0.65rem;
+    color: #999;
+    margin-top: 2px;
+    align-self: flex-end;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
+/* Seen checkmark */
+.checkmark {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    background-image: url('data:image/svg+xml;utf8,<svg fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>');
+    background-size: cover;
+    opacity: 0.5;
+    transition: opacity 0.3s;
+}
+.checkmark.seen {
+    opacity: 1;
+}
+
+/* Input area */
+.input-area {
+    display: flex;
+    padding: 0.5rem;
+    background: #f0f2f5;
+    gap: 0.5rem;
+    border-top: 1px solid #ccc;
+}
+
+/* Input box */
+#user-input {
+    flex: 1;
+    padding: 0.5rem 0.75rem;
+    border-radius: 20px;
+    border: 1px solid #ccc;
+    outline: none;
+}
+
+/* Send button */
+#send-btn {
+    background: #128c7e;
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 50%;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.2s;
+}
+#send-btn:hover { background: #075e54; }
+
+/* Typing indicator dots */
+.typing {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    margin: 0 2px;
+    background: #999;
+    border-radius: 50%;
+    animation: blink 1.4s infinite both;
+}
+.typing span:nth-child(1) { animation-delay: 0s; }
+.typing span:nth-child(2) { animation-delay: 0.2s; }
+.typing span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes blink {
+    0%, 80%, 100% { transform: scale(0); opacity: 0.3; }
+    40% { transform: scale(1); opacity: 1; }
+}
+</style>
+</head>
+<body>
+
+<div class="chat-container">
+    <!-- Chat header -->
+    <div class="flex justify-between items-center p-3 bg-[#075e54] text-white font-semibold">
+        <span>CuraBot</span>
+        <a href="/logout" class="text-red-400 hover:text-red-600 font-normal">Logout</a>
+    </div>
+
+    <!-- Chat messages -->
+    <div id="chat-box"></div>
+
+    <!-- Input area -->
+    <div class="input-area">
+        <input type="text" id="user-input" placeholder="Type a message..." />
+        <button id="send-btn">➤</button>
+    </div>
+</div>
+
+<script>
+// Elements
+const chatBox = document.getElementById('chat-box');
+const userInput = document.getElementById('user-input');
+const sendBtn = document.getElementById('send-btn');
+
+// Append message with timestamp
+function appendMessage(text, type='user') {
+    const msgDiv = document.createElement('div');
+    msgDiv.classList.add(type==='user' ? 'msg-user' : 'msg-bot','flex','flex-col');
+
+    const msgContent = document.createElement('span');
+    msgContent.innerHTML = text;
+
+    const timestamp = document.createElement('span');
+    timestamp.classList.add('timestamp');
+    const now = new Date();
+    timestamp.innerText = now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+
+    msgDiv.appendChild(msgContent);
+    msgDiv.appendChild(timestamp);
+
+    chatBox.appendChild(msgDiv);
+    chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+// Bot reply with typing animation + seen checkmark
+function botReply(message) {
+    const typingDiv = document.createElement('div');
+    typingDiv.classList.add('msg-bot','flex','gap-1');
+    typingDiv.innerHTML = `<span class="typing"><span></span><span></span><span></span></span>`;
+    chatBox.appendChild(typingDiv);
+    chatBox.scrollTop = chatBox.scrollHeight;
+
+    fetch("/get", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({message})
+    })
+    .then(res => res.json())
+    .then(data => {
+        typingDiv.remove();
+
+        const botMessage = data.reply;
+        const botDiv = document.createElement('div');
+        botDiv.classList.add('msg-bot','flex','flex-col');
+        chatBox.appendChild(botDiv);
+
+        let i = 0;
+        const msgContent = document.createElement('span');
+        botDiv.appendChild(msgContent);
+
+        function typeChar() {
+            if(i < botMessage.length){
+                msgContent.innerHTML += botMessage[i];
+                i++;
+                chatBox.scrollTop = chatBox.scrollHeight;
+                setTimeout(typeChar, 15);
+            } else {
+                // Timestamp
+                const timestamp = document.createElement('span');
+                timestamp.classList.add('timestamp');
+                const now = new Date();
+                timestamp.innerText = now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+                botDiv.appendChild(timestamp);
+
+                // Seen checkmark
+                const check = document.createElement('span');
+                check.classList.add('checkmark');
+                timestamp.appendChild(check);
+
+                setTimeout(() => check.classList.add('seen'), 500);
+                chatBox.scrollTop = chatBox.scrollHeight;
+            }
+        }
+        typeChar();
+    });
+}
+
+// Send message
+function sendMessage(){
+    const message = userInput.value.trim();
+    if(message){
+        appendMessage(message,'user');
+        userInput.value = '';
+        botReply(message);
+    }
+}
+
+sendBtn.addEventListener('click', sendMessage);
+userInput.addEventListener('keypress', e => { if(e.key==='Enter') sendMessage(); });
+</script>
+
+</body>
+</html>
